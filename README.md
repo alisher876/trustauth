@@ -1,1 +1,82 @@
-# trustauth
+# TrustAuth
+
+**Adaptive Multi-Factor Authentication Driven by Measured Trustworthiness**
+
+Graduation project — Cyber Security, New Uzbekistan University, Faculty of Computing.
+Supervisor: Dr. Arunava Roy.
+
+TrustAuth is a web authentication platform that *measures* how trustworthy each login method really is
+(accuracy, attack resistance, usability, availability) and uses those scores, together with the risk of
+each login, to choose the best and least predictable combination of methods for every login.
+
+It builds on Nag, Roy & Dasgupta, *"An Adaptive Approach Towards the Selection of Multi-factor
+Authentication"*, IEEE SSCI 2015, replacing published error rates with trust values measured on a working
+system.
+
+## Authentication factors
+
+| Category | Factor |
+|---|---|
+| Something you know | Password (argon2 + leaked-password check) |
+| Something you have | Passkey (WebAuthn) |
+| Something you have | Phone approval (scan QR, tap Approve) |
+| Something you are | Face verification (ArcFace + blink liveness) |
+| Something you do | Keystroke rhythm |
+
+## Team
+
+| Member | Name | Module | Folders |
+|---|---|---|---|
+| M1 | Sayfiddinov Doniyor | Trust Measurement Lab | `trust-lab/` |
+| M2 | Anvarova Sevinch | Face & Phone Approval | `backend/app/factors/face/`, `backend/app/factors/phone_approval/` |
+| M3 | To'lqunov Nurmuhammad | Password, Passkey & Keystroke | `backend/app/factors/password/`, `passkey/`, `keystroke/` |
+| M4 | Kurashev Alisher | Adaptive Engine & Platform | `backend/app/engine/`, `backend/app/core/`, `frontend/`, `docker-compose.yml` |
+
+## Repository layout
+
+```
+backend/app/core/       sessions, auth flow, attempt logging        (M4)
+backend/app/engine/     context, risk, factor selection, simulator  (M4)
+backend/app/factors/    one plug-in per factor                      (M2, M3)
+backend/tests/
+frontend/               React + TypeScript web app                  (M4 shell; M2/M3 factor screens)
+trust-lab/              evaluation notebooks, trust table output    (M1)
+docs/                   interface contract, meeting notes, decisions
+scripts/pre-push        git hook that blocks direct pushes to main
+```
+
+## Team rules
+
+### Git workflow
+
+1. **Never push directly to `main`.**
+2. Create a branch named `m<N>-<task>`, for example `m4-risk-score` or `m2-face-enrollment`.
+3. Make small commits with clear messages.
+4. Push your branch and open a Pull Request. Fill in the template.
+5. **One other member reviews** before merging. Use **Squash and merge**, then delete the branch.
+6. Before starting new work: `git switch main && git pull`, then create a fresh branch.
+
+Install the pre-push hook once after cloning (use **Git Bash** on Windows):
+
+```sh
+cp scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+```
+
+### Module ownership
+
+Grading is per person. Work only in your own module's folders. If you need a change in someone else's
+module, ask them or open an issue. Shared interfaces (`docs/interface.md`) are frozen at the end of
+week 4 and change only by team agreement.
+
+### Security and privacy
+
+- **Never commit** secrets (`.env`, keys), datasets, face images, embeddings, keystroke recordings or any
+  volunteer data. These are blocked by `.gitignore`; keep such files in `data/` or `datasets/`.
+- Volunteer data is collected only with informed consent, stored locally under pseudonymised IDs, and
+  deleted after the project.
+- Passwords are stored only as argon2 hashes. No custom cryptography.
+- Attack tools run **only against our own local system**.
+
+## Getting started
+
+_Coming in week 1: `docker compose up` will start the backend (FastAPI), frontend (React) and PostgreSQL._

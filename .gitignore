@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------
+# Privacy and security (see CLAUDE.md section 13) — NEVER commit
+# ---------------------------------------------------------------
+# Secrets and certificates
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+
+# Datasets and volunteer data (face images, keystroke recordings, ...)
+data/
+datasets/
+uploads/
+recordings/
+
+# Face embeddings and trained per-user models (derived from personal data)
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.onnx
+
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------
+# Node / frontend
+# ---------------------------------------------------------------
+node_modules/
+dist/
+.vite/
+playwright-report/
+test-results/
+
+# ---------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code personal settings
+.claude/settings.local.json
