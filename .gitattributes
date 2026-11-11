@@ -1,0 +1,9 @@
+# Normalise line endings in the repository to LF.
+* text=auto
+
+# Shell scripts and Docker files must keep LF, even on Windows checkouts,
+# or they fail with errors like "bad interpreter" / "$'\r': command not found".
+*.sh text eol=lf
+scripts/* text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
