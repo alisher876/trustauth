@@ -315,10 +315,10 @@ keep password + passkey, keystroke as standalone demo; missing engine → simula
 
 ## 15. How Claude Code should work in this repo
 
-- **Current phase:** project week 1 (semester week 9). Priority for M4: repo structure, `.gitignore`,
-  README with team rules, `scripts/pre-push`, PR template, then a runnable skeleton
-  (`docker compose up` → FastAPI `/health` + React page showing "Backend connected" + PostgreSQL),
-  then `docs/interface.md` draft.
+- **Current phase:** project week 2 (semester week 10). M4's week 1–2 work (repo, Docker skeleton,
+  `docs/interface.md` v0.1) is on `main`. M1–M3 are catching up on week 1–2 tasks:
+  **follow `docs/team-plan.md`** (task lists, file locations, proposed payloads, shared codes).
+  If the user is M1, M2 or M3, they will say so; then work only in their folders.
 - Work in **small, testable steps**; run the code/tests after each change.
 - **Explain what you write** (the student must be able to defend every line at the defense).
   Prefer clear, conventional code over clever code.
