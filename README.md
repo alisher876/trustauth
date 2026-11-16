@@ -53,7 +53,7 @@ scripts/pre-push        git hook that blocks direct pushes to main
 2. Create a branch named `m<N>-<task>`, for example `m4-risk-score` or `m2-face-enrollment`.
 3. Make small commits with clear messages.
 4. Push your branch and open a Pull Request. Fill in the template.
-5. **One other member reviews** before merging. Use **Squash and merge**, then delete the branch.
+5. Merge your own PR with **Squash and merge**, then delete the branch. No review is required.
 6. Before starting new work: `git switch main && git pull`, then create a fresh branch.
 
 Install the pre-push hook once after cloning (use **Git Bash** on Windows):

@@ -271,7 +271,7 @@ trustauth/
 ## 12. Git workflow (free GitHub, no branch protection)
 
 - **Never push directly to `main`.** Work on a branch named `m<N>-<task>` (e.g. `m4-risk-score`).
-- Open a Pull Request; **one other member reviews**; squash-merge; branch auto-deletes.
+- Open a Pull Request and squash-merge it yourself (no review required); branch auto-deletes.
 - Every member installs the hook once: `cp scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push`.
 - Small, focused commits with clear messages.
 - When Claude Code creates commits or PRs, keep them scoped to the current member's module.

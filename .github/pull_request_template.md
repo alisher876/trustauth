@@ -19,4 +19,3 @@
 - [ ] Shared interfaces unchanged — or the change is agreed and documented in `docs/interface.md`
 - [ ] No secrets, datasets, face images, embeddings, keystroke recordings or volunteer data committed
 - [ ] Tests pass locally
-- [ ] Reviewed by one other team member before merge
