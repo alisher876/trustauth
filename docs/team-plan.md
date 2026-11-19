@@ -1,4 +1,4 @@
-# TrustAuth — Team Plan and Week 2 Catch-up
+# TrustAuth — Team Plan and Week 2 Catch-u
 
 | | |
 |---|---|
