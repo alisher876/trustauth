@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from app.core.db import database_is_up
+from app.core.redis_store import redis_is_up
 
 app = FastAPI(title="TrustAuth")
 
@@ -11,7 +12,11 @@ app = FastAPI(title="TrustAuth")
 def health() -> dict:
     """Liveness check used by the frontend and by Docker.
 
-    The API itself is "ok" if it can answer; the database status is reported separately
-    so a database problem is visible without taking the whole API down.
+    The API itself is "ok" if it can answer; the database and Redis are reported separately
+    so a problem in one of them is visible without taking the whole API down.
     """
-    return {"status": "ok", "database": "ok" if database_is_up() else "unavailable"}
+    return {
+        "status": "ok",
+        "database": "ok" if database_is_up() else "unavailable",
+        "redis": "ok" if redis_is_up() else "unavailable",
+    }
