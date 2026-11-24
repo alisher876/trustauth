@@ -47,6 +47,11 @@ contextual-bandit / self-learning selection, native mobile apps, production depl
 
 **Test conditions (kept small):** laptop vs phone × normal vs dim light.
 
+**Models and datasets (decided week 3, see `docs/decisions.md`):** **pretrained models only**, the team trains
+no models (D1). Face uses pretrained ArcFace + MediaPipe (optionally a pretrained anti-spoofing model);
+keystroke uses a per-user statistical profile made at enrollment. **Datasets are for evaluation and threshold
+tuning only** (D2): LFW for face, CMU Keystroke for keystroke; none for password, passkey, phone approval.
+
 ---
 
 ## 3. Team and module ownership
@@ -226,8 +231,8 @@ User study: 10–15 volunteers, laptop + phone, normal + dim light, informed con
 | Frontend | React + TypeScript (Vite), WebAuthn browser API (optionally @simplewebauthn/browser), QR code library |
 | Backend | Python 3.11, FastAPI, Pydantic, WebSockets |
 | Database | PostgreSQL (SQLAlchemy + Alembic migrations), Redis |
-| Face | InsightFace (ArcFace), MediaPipe (blink via eye aspect ratio), OpenCV |
-| Keystroke | scikit-learn (Isolation Forest / One-Class SVM), pandas |
+| Face | InsightFace (ArcFace), MediaPipe Tasks `FaceLandmarker` (blink via eye aspect ratio), OpenCV; all pretrained |
+| Keystroke | Scaled Manhattan per-user profile; scikit-learn (One-Class SVM, Isolation Forest) for comparison; pandas |
 | Password | argon2-cffi; leaked-password list check |
 | Passkey | py_webauthn |
 | Trust Lab | pandas, numpy, scipy, matplotlib, Jupyter |
@@ -315,10 +320,12 @@ keep password + passkey, keystroke as standalone demo; missing engine → simula
 
 ## 15. How Claude Code should work in this repo
 
-- **Current phase:** project week 2 (semester week 10). M4's week 1–2 work (repo, Docker skeleton,
-  `docs/interface.md` v0.1) is on `main`. M1–M3 are catching up on week 1–2 tasks:
-  **follow `docs/team-plan.md`** (task lists, file locations, proposed payloads, shared codes).
-  If the user is M1, M2 or M3, they will say so; then work only in their folders.
+- **Current phase:** project week 3 (semester week 11). Week 1–2 work is done (M1 merged; M2, M3 uploading).
+  `docs/interface.md` is **v0.2** (to be agreed at the week 3 meeting, frozen end of week 4) and
+  `backend/app/factors/base.py` implements it. Week 3 tasks: M2/M3 write **mock factors** by subclassing
+  `MockFactor` in `base.py`; M4 builds registration, sessions (Redis) and the challenge loop with the mocks;
+  M1 writes the trust formula v0 and a placeholder trust table. Decisions that changed the plan are in
+  `docs/decisions.md`. If the user is M1, M2 or M3, they will say so; then work only in their folders.
 - Work in **small, testable steps**; run the code/tests after each change.
 - **Explain what you write** (the student must be able to defend every line at the defense).
   Prefer clear, conventional code over clever code.
