@@ -1,11 +1,25 @@
 """TrustAuth backend entry point."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.core.db import database_is_up
+from app.core.auth_routes import router as auth_router
+from app.core.db import create_tables, database_is_up
+from app.core.factor_setup import register_factors
 from app.core.redis_store import redis_is_up
 
-app = FastAPI(title="TrustAuth")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Runs once when the server starts: create tables, register the factors."""
+    create_tables()
+    register_factors()
+    yield
+
+
+app = FastAPI(title="TrustAuth", lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.get("/health")
