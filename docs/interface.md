@@ -1,17 +1,13 @@
-# TrustAuth — Shared Interface (v0.2)
+# TrustAuth — Shared Interface (v1.0, frozen)
 
 | | |
 |---|---|
-| **Status** | v0.2, for agreement at the week 3 meeting |
+| **Status** | **v1.0, frozen** (end of week 4). Changes only by team agreement, recorded in §10 |
 | **Maintainer** | M4 (Alisher) |
-| **Agree by** | end of week 3 |
-| **Frozen** | end of week 4; after that, changes only by team agreement |
-| **Code** | `backend/app/factors/base.py` implements sections 2–5 |
+| **Code** | `backend/app/factors/base.py` implements sections 2–5; `backend/app/core/` implements §7 and §9 |
 
 This document is the contract between modules. If your code follows it, it plugs into the platform
-without anyone else changing their code. v0.2 merges the answers and proposals from the week 2 DESIGN.md
-files and `trust-lab/docs/metrics.md`; [section 10](#10-changes-from-v01) lists every change.
-Items still to confirm at the meeting are marked **[confirm]**.
+without anyone else changing their code. [Section 10](#10-changes) lists every change since v0.1.
 
 ---
 
@@ -127,7 +123,7 @@ Returned by every `verify()`.
 | `factor` | `FactorName` | Which factor produced this |
 | `accepted` | `bool` | Did the user pass? |
 | `score` | `float` 0–1 | **Higher = more like the genuine user.** Binary factors (password, passkey, phone approval): `1.0` pass, `0.0` fail |
-| `duration_ms` | `int` ≥ 0 | Time the user spent on this factor (from `start` to `verify`) |
+| `duration_ms` | `int` ≥ 0 | Time the user spent on this factor (from `start` to `verify`). A real factor that cannot know it returns `0`; the **core** then fills in the time from sending the challenge to receiving the answer |
 | `context` | `dict` | Factor-specific observations, see table below |
 | `error` | `str \| null` | Why it could not be completed; `null` if it ran normally (even if rejected) |
 
@@ -216,8 +212,10 @@ All endpoints are under `/api` from the browser (the frontend proxy strips it).
 
 ### `POST /auth/register`
 ```json
-{ "username": "alice" }   // response: { "user_id": "u_…" }  (factors are enrolled separately)
+{ "username": "alice" }   // response: { "user_id": "u_…", "session": "…" }
 ```
+The new user is logged in, so they can enroll their first factors with the returned session.
+Usernames: 3–32 characters, lowercase letters, digits, `.`, `_`, `-` (case-insensitive).
 
 ### `POST /auth/login/start`
 ```json
@@ -242,21 +240,40 @@ looks the same (fake factors), so attackers cannot find out which usernames exis
 { "status": "denied" }
 ```
 
+After `authenticated`, the response also sets the **device cookie** `ta_device` (HttpOnly, 180 days).
+Next time this browser logs in to the same account, `known_device = true` (§3). Network and device become
+"known" only after a fully successful login.
+
 ### Enrollment
-`POST /auth/enroll/{factor}/start` → `enroll_start()`; `POST /auth/enroll/{factor}/finish` → `EnrollResult`.
-Requires a logged-in session (or the registration session for the first factor).
+Header `Authorization: Bearer <session>` (from login or registration).
+```json
+// POST /auth/enroll/{factor}/start    request
+{ "client": { "has_camera": true, "webauthn_supported": true } }
+// response: whatever enroll_start() returns
+// POST /auth/enroll/{factor}/finish   request
+{ "payload": { /* factor-specific enrollment data */ } }
+// response: EnrollResult
+{ "done": false, "remaining": 7, "reason": null }
+```
+`GET /auth/me` → `{ "user_id": "u_…", "username": "alice" }` with the same header.
+
+### Researcher endpoints (study sessions)
+Header `X-Admin-Token: <ADMIN_TOKEN from .env>`; switched off when `ADMIN_TOKEN` is empty.
+- `PUT /admin/study-label` `{ "is_genuine": false, "attack_type": "printed_photo", "study_session_id": "S07" }`:
+  copied into every attempt row until changed; `DELETE` clears it; `GET` shows it.
+- `GET /admin/attempts.csv`: the attempt log for the Trust Lab (`context`, `selected_factors` as JSON strings).
 
 ### Phone approval (M2, routed by the core)
 - `WS /ws/phone-approval/{login_id}`, server → login page:
   `{"status": "waiting" | "scanned" | "approved" | "denied" | "expired"}`; closed after the last three.
 - `GET/POST /phone/approve/{token}`, `GET /phone/register/{token}`: pages for the phone.
 
-### Retry and fallback rules [confirm]
+### Retry and fallback rules
 1. A rejected factor (`accepted=false`, `error=null`) gets **1 retry**.
 2. After the retry fails, or after an error, the factor is **replaced** by the next-best available factor.
 3. **Face rejected with `light = "dim"`**: replaced straight away, no retry (a retry in the same light
    would likely fail again).
-4. **Denied** after 2 different factors have failed.
+4. **Denied** after 2 different factors have failed, or when no unused factor is left to replace a failed one.
 
 ---
 
@@ -313,14 +330,26 @@ are never edited afterwards.
 
 ---
 
-## 10. Changes from v0.1
+## 10. Changes
+
+### v0.2 → v1.0 (week 4, frozen)
+
+| # | Change | From |
+|---|---|---|
+| 14 | Frozen; retry and fallback rules final (§7), as implemented in `backend/app/core/flow.py` | Week 4 milestone |
+| 15 | `duration_ms = 0` from a real factor means "core measures it" (§5) | M4 |
+| 16 | Register returns a session; enrollment request/response bodies; `GET /auth/me` (§7) | M4 |
+| 17 | Device cookie `ta_device` after a successful login; `network` / `known_device` only from fully successful logins (§3, §7) | M4 |
+| 18 | Researcher endpoints: study label, attempt-log CSV export (§7) | M1 requests (`trust-lab/docs/attempt-log.md`) |
+
+### v0.1 → v0.2 (week 3)
 
 | # | Change | From |
 |---|---|---|
 | 1 | Proposed fields accepted: `has_camera`, `webauthn_supported` (context); `error`, `condition`, `selector` (log); `n` (trust table) | v0.1 Q1, answered by M1 |
 | 2 | `is_enrolled` is **async** | Q2, M3 |
 | 3 | `enroll_start` / `enroll_finish` on the factor class; `enroll_finish` returns `EnrollResult` and may be called several times | Q3, M3 + M2 |
-| 4 | Retry and fallback rules written down (§7) **[confirm]** | Q4, M4 + M2 (dim-light rule) |
+| 4 | Retry and fallback rules written down (§7); final in v1.0 | Q4, M4 + M2 (dim-light rule) |
 | 5 | Study labels set in the dashboard before each block, never edited; new log column `study_session_id` | Q5, M1 |
 | 6 | Keystroke only with password: one screen, one request, two results, keystroke skipped if password wrong; opaque key labels | Q6, M3 |
 | 7 | `light_hint` from the browser before selection; face's `light` overrides it | Q7, M2 |
@@ -331,8 +360,7 @@ are never edited afterwards.
 | 12 | Factor `requires` column (§2); enrollment endpoints (§7); `MockFactor` helper and `FACTOR_MODE` default | M4 |
 | 13 | Pretrained models only; datasets for evaluation only | `docs/decisions.md` D1, D2 |
 
-## 11. Still open
+## 11. Decided points
 
-- **Retry rules (§7):** confirm at the meeting.
-- **Phone deny:** `cancelled` (proposed by M2) vs `accepted=false, error=null`. v0.2 uses `cancelled` +
-  `context.decision = "denied"`, so the Trust Lab can count a deny during an attack as a successful defence.
+- **Phone deny:** `error = "cancelled"` + `context.decision = "denied"`, so the Trust Lab can count a deny
+  during an attack as a successful defence.

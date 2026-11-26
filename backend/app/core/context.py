@@ -1,8 +1,9 @@
 """Build the LoginContext for a new login (interface §3).
 
-v0 for week 3: device type and browser from the User-Agent, IP, hour, and what the
-browser reports (camera, WebAuthn, light hint). `network`, `known_device` and
-`recent_failures` stay at their safe defaults until the context collector v1 (week 4).
+v1 (week 4): device type and browser from the User-Agent, IP, hour, what the browser
+reports (camera, WebAuthn, light hint), and the history-based fields the caller looks up:
+`network` / `known_device` (app.core.known) and `recent_failures` (Redis counter).
+For an unknown username these stay at their safe defaults (unknown network, unknown device, 0).
 """
 
 from __future__ import annotations
@@ -48,16 +49,20 @@ def browser_name(user_agent: str) -> str:
 
 
 def build_login_context(login_id: str, user_agent: str, ip: str, client: ClientInfo,
+                        known_network: bool = False, known_device: bool = False, recent_failures: int = 0,
                         now: datetime | None = None) -> LoginContext:
-    """LoginContext for one login. `now` can be passed in tests."""
+    """LoginContext for one login. The history values are looked up by the caller; `now` is for tests."""
     now = now or datetime.now(TASHKENT)
     return LoginContext(
         login_id=login_id,
         device_type=device_type(user_agent),
         browser=browser_name(user_agent),
         ip=ip,
+        network="known" if known_network else "unknown",
+        known_device=known_device,
         hour=now.astimezone(TASHKENT).hour,
         has_camera=client.has_camera,
         webauthn_supported=client.webauthn_supported,
         light_hint=client.light_hint,
+        recent_failures=recent_failures,
     )

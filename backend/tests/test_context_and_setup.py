@@ -78,7 +78,39 @@ def test_register_factors_does_not_hide_a_broken_mock(monkeypatch):
         register_factors("mock")
 
 
-def test_register_factors_real_mode_registers_nothing_yet():
+def _fake_module(monkeypatch, module_name, class_name, factor_name):
+    module = types.ModuleType(module_name)
+    cls = type(class_name, (MockFactor,), {"name": factor_name})
+    setattr(module, class_name, cls)
+    monkeypatch.setitem(sys.modules, module_name, module)
+    return cls
+
+
+def test_real_mode_prefers_real_factor_and_falls_back_to_mock(monkeypatch):
+    real_password = _fake_module(monkeypatch, "fake_real_password", "PasswordFactor", "password")
+    mock_password = _fake_module(monkeypatch, "fake_mock_password", "MockPassword", "password")
+    mock_face = _fake_module(monkeypatch, "fake_mock_face", "MockFace", "face")
+    monkeypatch.setattr("app.core.factor_setup.MOCKS", {
+        "password": ("fake_mock_password", "MockPassword"),
+        "face": ("fake_mock_face", "MockFace"),
+    })
+    monkeypatch.setattr("app.core.factor_setup.REAL", {
+        "password": ("fake_real_password", "PasswordFactor"),
+        "face": ("app.factors.face.factor_not_written_yet", "FaceFactor"),  # no real face yet
+    })
+
     clear_registry()
-    assert register_factors("real") == []
-    assert registered_factors() == {}
+    assert register_factors("real") == ["face", "password"]
+    assert type(registered_factors()["password"]) is real_password  # real one used
+    assert type(registered_factors()["face"]) is mock_face  # real missing -> mock
+
+    clear_registry()
+    register_factors("mock")
+    assert type(registered_factors()["password"]) is mock_password  # mock mode ignores real factors
+    clear_registry()
+
+
+def test_build_login_context_history_fields():
+    ctx = build_login_context("L1", CHROME_WINDOWS, "10.0.0.1", ClientInfo(),
+                              known_network=True, known_device=True, recent_failures=3)
+    assert (ctx.network, ctx.known_device, ctx.recent_failures) == ("known", True, 3)

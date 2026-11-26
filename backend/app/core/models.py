@@ -4,9 +4,12 @@ users     one row per account. The username only lives here; everything else use
           pseudonymous user_id (CLAUDE.md §13).
 attempts  one row per factor attempt: the attempt log of docs/interface.md §9, which the
           Trust Lab analyses.
+known_networks / known_devices
+          where a user has logged in successfully before; used by the context collector
+          (LoginContext.network / known_device).
 
-Week 3 creates the tables with `create_all` at start-up; Alembic migrations follow once the
-schema is frozen (week 4).
+Tables are created with `create_all` at start-up. Factor-owned tables (e.g. password
+credentials) use the same `Base`, so they are created too once their factor is registered.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ import secrets
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -65,3 +68,31 @@ class Attempt(Base):
     risk_level: Mapped[str] = mapped_column(String(10))
     selected_factors: Mapped[list] = mapped_column(JSONType)
     selector: Mapped[str] = mapped_column(String(10))
+
+
+class KnownNetwork(Base):
+    """An IP address this user has logged in from successfully. Makes LoginContext.network "known"."""
+
+    __tablename__ = "known_networks"
+    __table_args__ = (UniqueConstraint("user_id", "ip"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    ip: Mapped[str] = mapped_column(String(45))  # 45 characters fits any IPv6 address
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class KnownDevice(Base):
+    """A browser that received our device cookie after a successful login. Makes known_device true.
+
+    Only the SHA-256 hash of the cookie is stored, so a database leak does not reveal valid cookies.
+    """
+
+    __tablename__ = "known_devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

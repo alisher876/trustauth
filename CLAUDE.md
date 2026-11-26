@@ -320,12 +320,13 @@ keep password + passkey, keystroke as standalone demo; missing engine → simula
 
 ## 15. How Claude Code should work in this repo
 
-- **Current phase:** project week 3 (semester week 11). Week 1–2 work is done (M1 merged; M2, M3 uploading).
-  `docs/interface.md` is **v0.2** (to be agreed at the week 3 meeting, frozen end of week 4) and
-  `backend/app/factors/base.py` implements it. Week 3 tasks: M2/M3 write **mock factors** by subclassing
-  `MockFactor` in `base.py`; M4 builds registration, sessions (Redis) and the challenge loop with the mocks;
-  M1 writes the trust formula v0 and a placeholder trust table. Decisions that changed the plan are in
-  `docs/decisions.md`. If the user is M1, M2 or M3, they will say so; then work only in their folders.
+- **Current phase:** project week 4 (semester week 12). `docs/interface.md` is **v1.0, frozen**;
+  `backend/app/factors/base.py` and `backend/app/core/` implement it. The challenge loop runs with mock factors
+  (`FACTOR_MODE=mock`); `FACTOR_MODE=real` uses a factor's real class (`app/factors/<name>/factor.py`, listed in
+  `core/factor_setup.py` `REAL`) where it exists and its mock otherwise. Week 4 tasks: M3 real password factor;
+  M2 webcam frame → face embedding; M1 consent form + test-condition grid; M4 context collector v1 (known
+  network/device, recent failures) + attempt logging (study labels, CSV export). Decisions that changed the
+  plan are in `docs/decisions.md`. If the user is M1, M2 or M3, they will say so; then work only in their folders.
 - Work in **small, testable steps**; run the code/tests after each change.
 - **Explain what you write** (the student must be able to defend every line at the defense).
   Prefer clear, conventional code over clever code.
