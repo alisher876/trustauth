@@ -1,0 +1,134 @@
+<!doctype html>
+<!--
+  Passkey registration test page (M3, week 5). Not part of the real app: it lets us test passkey
+  registration on a laptop and on a phone (through ngrok) before the React screens exist.
+
+  Vite serves files in frontend/public as they are, so this page is at  /passkey-demo.html
+  It uses only the browser's own WebAuthn API (no libraries) and the backend's normal endpoints:
+    POST /api/auth/register                  -> session
+    POST /api/auth/enroll/passkey/start      -> WebAuthn options
+    navigator.credentials.create(options)    -> fingerprint / face / PIN on the device
+    POST /api/auth/enroll/passkey/finish     -> { done, reason }
+  Needs FACTOR_MODE=real in .env (otherwise the mock passkey answers).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passkey test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    input, button { font-size: 1rem; padding: .5rem .75rem; }
+    button { cursor: pointer; }
+    pre { background: #f3f3f3; padding: .75rem; white-space: pre-wrap; word-break: break-word; font-size: .85rem; }
+    .ok { color: #11731a; } .bad { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>Passkey registration test</h1>
+  <p id="secure"></p>
+  <p>
+    <label>Username <input id="username" autocomplete="off" placeholder="e.g. test-phone-1"></label>
+    <button id="go">Register account + passkey</button>
+  </p>
+  <p>Already registered on another device? Paste that session to add this device as a second passkey:<br>
+    <input id="session" placeholder="session token (optional)" style="width: 100%">
+  </p>
+  <pre id="log"></pre>
+
+<script>
+// --- base64url <-> bytes: WebAuthn uses bytes, JSON uses base64url text ---------------------------
+function toBytes(base64url) {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(base64url.length / 4) * 4, "=");
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+}
+function toBase64url(buffer) {
+  const text = String.fromCharCode(...new Uint8Array(buffer));
+  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+const log = (line, cls) => {
+  const el = document.getElementById("log");
+  el.insertAdjacentHTML("beforeend", `<span class="${cls || ""}">${line.replace(/</g, "&lt;")}</span>\n`);
+};
+
+async function api(path, body, session) {
+  const headers = { "Content-Type": "application/json" };
+  if (session) headers.Authorization = `Bearer ${session}`;
+  const response = await fetch(`/api${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`${path}: HTTP ${response.status} ${JSON.stringify(data)}`);
+  return data;
+}
+
+// The server sends JSON (base64url strings); credentials.create() needs ArrayBuffers in three places.
+function creationOptions(options) {
+  return {
+    ...options,
+    challenge: toBytes(options.challenge),
+    user: { ...options.user, id: toBytes(options.user.id) },
+    excludeCredentials: (options.excludeCredentials || []).map((c) => ({ ...c, id: toBytes(c.id) })),
+  };
+}
+
+// The browser's answer -> the JSON py_webauthn expects (same shape as @simplewebauthn/browser).
+function credentialJson(credential) {
+  const r = credential.response;
+  return {
+    id: credential.id,
+    rawId: toBase64url(credential.rawId),
+    type: credential.type,
+    response: {
+      clientDataJSON: toBase64url(r.clientDataJSON),
+      attestationObject: toBase64url(r.attestationObject),
+      transports: r.getTransports ? r.getTransports() : [],
+    },
+    clientExtensionResults: credential.getClientExtensionResults(),
+    authenticatorAttachment: credential.authenticatorAttachment || undefined,
+  };
+}
+
+async function run() {
+  document.getElementById("log").textContent = "";
+  try {
+    let session = document.getElementById("session").value.trim();
+    if (!session) {
+      const username = document.getElementById("username").value.trim().toLowerCase();
+      const account = await api("/auth/register", { username });
+      session = account.session;
+      log(`1. account created: ${account.user_id}`, "ok");
+      log(`   session (to add a 2nd device): ${session}`);
+    }
+
+    const { options } = await api("/auth/enroll/passkey/start", { client: { webauthn_supported: true } }, session);
+    log(`2. options received: rpId = ${options.rp.id}, userVerification = ${options.authenticatorSelection.userVerification}`, "ok");
+
+    let payload;
+    try {
+      const credential = await navigator.credentials.create({ publicKey: creationOptions(options) });
+      payload = { credential: credentialJson(credential) };
+      log(`3. device created the passkey (transports: ${payload.credential.response.transports.join(", ") || "none"})`, "ok");
+    } catch (error) {
+      payload = { client_error: error.name };  // interface §5: browser-side failures
+      log(`3. browser refused: ${error.name}: ${error.message}`, "bad");
+    }
+
+    const result = await api("/auth/enroll/passkey/finish", { payload }, session);
+    log(`4. server: ${JSON.stringify(result)}`, result.done ? "ok" : "bad");
+  } catch (error) {
+    log(String(error.message || error), "bad");
+  }
+}
+
+const secure = document.getElementById("secure");
+if (!window.isSecureContext) {
+  secure.innerHTML = '<b class="bad">Not a secure context.</b> Open this page on http://localhost or https (ngrok), not on an IP address.';
+} else if (!window.PublicKeyCredential) {
+  secure.innerHTML = '<b class="bad">This browser has no WebAuthn.</b>';
+} else {
+  secure.innerHTML = `<span class="ok">Secure context, WebAuthn available.</span> Page origin: <code>${location.origin}</code>`;
+}
+document.getElementById("go").addEventListener("click", run);
+</script>
+</body>
+</html>
