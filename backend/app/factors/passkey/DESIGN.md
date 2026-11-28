@@ -4,7 +4,7 @@
 |---|---|
 | **Factor name** | `passkey` (category: something you **have**: the device holding the private key, unlocked with fingerprint / face / PIN) |
 | **Owner** | M3 (Nurmuhammad) |
-| **Status** | Week 1–2 study and design. Registration week 5, login week 6 |
+| **Status** | Week 5: **registration implemented** (`factor.py`, `storage.py`, `challenges.py`, `config.py`), phone HTTPS set-up in [`PHONE_HTTPS.md`](PHONE_HTTPS.md). Login week 6 |
 | **Related** | [`docs/interface.md`](../../../../docs/interface.md) |
 
 ## 1. How passkeys (WebAuthn) work, in short
@@ -18,8 +18,9 @@
 - The browser binds every credential to the **RP ID** (our domain). A fake site on another domain cannot
   ask for a signature for our domain, which is why phishing should fail **by design**.
 
-Libraries (no custom crypto): backend **`webauthn`** (py_webauthn, Duo Labs, 2.x); browser
-**`@simplewebauthn/browser`**.
+Libraries (no custom crypto): backend **`webauthn`** (py_webauthn, Duo Labs, **3.0.1**); browser
+**`@simplewebauthn/browser`** for the React screens (the week 5 test page `frontend/public/passkey-demo.html`
+uses the browser's own `navigator.credentials.create()` with the same JSON format).
 
 ## 2. Configuration
 
@@ -55,6 +56,12 @@ sequenceDiagram
     S->>S: store credential_id, public_key, sign_count, transports
     S-->>B: { "done": true }
 ```
+
+**Enrollment reasons (week 5, `EnrollResult.reason`):** `cancelled` (browser prompt closed: `client_error`),
+`expired` (no `enroll_start`, older than 5 min, or the challenge was already used), `rejected` (py_webauthn
+refused it: other challenge, other origin or RP ID, no user verification, unreadable data),
+`already_registered` (this credential ID belongs to an account already), `bad_payload` (no `credential`
+object).
 
 Option choices:
 
